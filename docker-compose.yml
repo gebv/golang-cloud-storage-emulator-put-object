@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  firebase-emulator:
+    build:
+      context: .
+      dockerfile: firebase-emulator.Dockerfile
+    ports:
+      - 127.0.0.1:9199:9199
+      - 127.0.0.1:4000:4000
+      - 127.0.0.1:8080:8080
+    volumes:
+      - ./.firebaserc:/.firebaserc:ro
+      - ./firebase.json:/firebase.json:ro
+      - ./storage.rules:/storage.rules:ro
