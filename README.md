@@ -1,16 +1,30 @@
+TODO: rename repo
 
-test (memo) case for two problems
+test (memo) case for two problems (for firebase emulator storage)
 * https://github.com/firebase/firebase-tools/issues/3556
 * to write metadata and object data at the same time does not works
 
+backend: fake-gcs-server
+
 ```bash
-$ go run main.go
+$ STORAGE_EMULATOR_HOST=localhost:8081 go run main.go
+file data: "123"
+file metadata: map[string]string{"a":"b"}
+```
+
+backend: firebase emulator storage
+```bash
+$ STORAGE_EMULATOR_SKIP_CREATE_BUCKET=1 STORAGE_EMULATOR_HOST=localhost:9199 go run main.go
+Assert envs
+Connected
+Skip the creation of the bucket
+Assert bucket
 file data: "123\r\n"
-2021/09/16 23:13:14 failed to get the attrs: storage: object doesn't exist
+2021/09/17 01:55:35 failed to get the attrs: storage: object doesn't exist
 exit status 1
 ```
 
-emulator startup log
+firebase emulator startup log
 
 ```log
 ⚠  emulators: You are not currently authenticated so some features may not work correctly. Please run firebase login to authenticate the CLI.

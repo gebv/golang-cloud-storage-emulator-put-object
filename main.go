@@ -10,24 +10,43 @@ import (
 	"cloud.google.com/go/storage"
 )
 
-func main() {
-	os.Setenv("STORAGE_EMULATOR_HOST", "127.0.0.1:9199")
-	defer os.Unsetenv("STORAGE_EMULATOR_HOST")
+var (
+	c *storage.Client
+)
 
-	c, err := storage.NewClient(context.Background())
+var projectID = os.Getenv("GCP_PROJECT")
+
+func main() {
+	// asserts
+	if os.Getenv("STORAGE_EMULATOR_HOST") == "" && os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
+		panic("env STORAGE_EMULATOR_HOST is required")
+	}
+
+	fmt.Println("Assert envs")
+
+	var err error
+	c, err = storage.NewClient(context.Background())
 
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalln("failed to connect the cloud storage", err)
 	}
+
+	fmt.Println("Connected")
 
 	const bucketName = "somebucket"
 
-	b := c.Bucket(bucketName)
+	if os.Getenv("STORAGE_EMULATOR_SKIP_CREATE_BUCKET") == "" {
+		createBucketIfNeed(bucketName)
+	} else {
+		fmt.Println("Skip the creation of the bucket")
+	}
 
-	const fileName = "filename123"
+	fmt.Println("Assert bucket")
+
+	const fileName = "path/to/file"
 
 	// put object with metadata
-	fw := b.Object(fileName).NewWriter(context.Background())
+	fw := c.Bucket(bucketName).Object(fileName).NewWriter(context.Background())
 	fw.Metadata = map[string]string{"a": "b"}
 	fw.Write([]byte("123"))
 	err = fw.Close()
@@ -35,10 +54,10 @@ func main() {
 		log.Fatalln("failed to push file data to storage:", err)
 	}
 
-	file := b.Object(fileName)
+	fmt.Println("Object is created")
 
 	// to read file data
-	fr, err := file.NewReader(context.Background())
+	fr, err := c.Bucket(bucketName).Object(fileName).NewReader(context.Background())
 	if err != nil {
 		log.Fatalln("failed to create reader for file:", err)
 	}
@@ -49,9 +68,27 @@ func main() {
 	fmt.Printf("file data: %q\n", fileData)
 
 	// to read file metadata
-	atrrs, err := file.Attrs(context.Background())
+	atrrs, err := c.Bucket(bucketName).Object(fileName).Attrs(context.Background())
 	if err != nil {
 		log.Fatalln("failed to get the attrs:", err)
 	}
 	fmt.Printf("file metadata: %#v\n", atrrs.Metadata)
+}
+
+func createBucketIfNeed(name string) {
+	b := c.Bucket(name)
+	_, err := b.Attrs(context.Background())
+	if err == nil {
+		return
+	}
+	if err == storage.ErrBucketNotExist {
+		err = b.Create(context.TODO(), projectID, &storage.BucketAttrs{
+			Name: name,
+		})
+		if err != nil {
+			log.Fatalln("failed to create bucket:", err)
+		}
+	} else if err != nil {
+		log.Fatalln("failed to get attrs of bucket", err)
+	}
 }
